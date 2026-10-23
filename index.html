@@ -375,6 +375,12 @@
   .cw .inp.bad { border-color: var(--bad); color: var(--bad); }
   .cw .inp.good { border-color: var(--good); color: var(--good); }
   .cw .inp.shown { color: var(--muted); border-style: dashed; }
+  .cw.small .cell { font-size: 21px; border-radius: 10px; }
+  #crossView.tight .cw-rule { display: none; }
+  #crossView.tight .feedback { margin-top: 4px; min-height: 22px; font-size: 17px; }
+  /* short screens (small phones, large system font): smaller keys leave room for the task */
+  @media (max-height: 760px) { .key { height: clamp(44px, 7.5vh, 60px); font-size: 26px; } }
+  .cw.small .op { font-size: 18px; }
 
   .keypad[hidden] { display: none; }
   .divs-task { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 10px; }
@@ -1747,6 +1753,7 @@
   window.addEventListener("resize", function () {
     if (state.mode === "game") { gameResize(); draw(); }
     if (state.mode === "dash") { dashResize(); dashDraw(); }
+    if (state.mode === "cross") fitCross();
   });
 
   // ---------- dash game ----------
@@ -2127,6 +2134,27 @@
       }
     }
     el.cw.innerHTML = html;
+    fitCross();
+  }
+
+  // Row heights follow the free space of the stage, so the whole crossword stays visible
+  // on short screens (large system font, browser toolbars) instead of being cut off at the top.
+  function fitCross() {
+    var view = $("crossView"), stage = view.parentNode;
+    if (view.hidden || !stage.clientHeight) return;
+    var cs = getComputedStyle(stage), rule = view.querySelector(".cw-rule"), row, op;
+    var size = function () {
+      var avail = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) -
+        (rule.offsetHeight ? rule.offsetHeight + 10 : 0) - el.cwFb.offsetHeight - parseFloat(getComputedStyle(el.cwFb).marginTop) - 16;
+      op = avail < 150 ? 12 : 18;
+      row = Math.floor((avail - 2 * op) / 3);
+    };
+    view.className = "view"; size();
+    // not enough room: drop the one-line rule (it is the same for every crossword) and measure again
+    if (row < 40) { view.className = "view tight"; size(); }
+    row = Math.max(28, Math.min(60, row));
+    el.cw.style.gridTemplateRows = row + "px " + op + "px " + row + "px " + op + "px " + row + "px";
+    el.cw.className = row < 44 ? "cw small" : "cw";
   }
 
   function cwRowText(i) {
@@ -2456,7 +2484,7 @@
       stopTimer();
       el.timer.hidden = true;
     }
-    if (m === "cross" && !cw) newCrossword();
+    if (m === "cross") { if (!cw) newCrossword(); else fitCross(); }
     if (m === "divs") setDivsSub(state.divsSub);
     if (m === "game") {
       gameResize();
